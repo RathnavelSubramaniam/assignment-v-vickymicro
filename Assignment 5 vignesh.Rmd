@@ -1,0 +1,181 @@
+---
+title: "machine learning assignment"
+author: "vignesh s "
+date: "2022-11-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Libraries and Dataset
+
+```{r}
+require(MASS); require(tidyverse); require(caret); require(leaps); require(glmnet)
+set.seed(1)
+data('Boston')
+```
+
+## Best Subset Selection
+
+```{r}
+set.seed(123)
+train <- sample(c(TRUE,FALSE), nrow(Boston),rep = TRUE)
+test <- (! train)
+```
+
+```{r}
+regfit.best = regsubsets(crim ~ .,data = Boston[train,],nvmax = 13)
+```
+
+```{r}
+test.mat = model.matrix(crim ~ .,data = Boston[test,])
+```
+
+
+```{r}
+val.errors_best = rep(NA,13)
+
+for (i in 1:13){
+  coefi = coef(regfit.best,id=i)
+  pred = test.mat[,names(coefi)]%*%coefi
+  val.errors_best[i] = mean((Boston$crim[test]-pred)^2)
+}
+```
+
+```{r}
+which.min(val.errors_best)
+```
+
+```{r}
+coef(regfit.best,2)
+```
+
+## Forward
+
+```{r}
+regfit.fwd = regsubsets(crim ~ .,data = Boston[train,],nvmax = 13, method ="forward")
+```
+
+```{r}
+test.mat = model.matrix(crim ~ .,data = Boston[test,])
+```
+
+
+```{r}
+val.errors_fwd = rep(NA,13)
+
+for (i in 1:13){
+  coefi = coef(regfit.fwd,id=i)
+  pred = test.mat[,names(coefi)]%*%coefi
+  val.errors_fwd[i] = mean((Boston$crim[test]-pred)^2)
+}
+```
+
+```{r}
+which.min(val.errors_fwd)
+```
+
+```{r}
+coef(regfit.fwd,2)
+```
+
+## Backward
+
+```{r}
+regfit.bwd = regsubsets(crim ~ .,data = Boston[train,],nvmax = 13, method ="backward")
+```
+
+```{r}
+test.mat = model.matrix(crim ~ .,data = Boston[test,])
+```
+
+
+```{r}
+val.errors_bwd = rep(NA,13)
+
+for (i in 1:13){
+  coefi = coef(regfit.bwd,id=i)
+  pred = test.mat[,names(coefi)]%*%coefi
+  val.errors_bwd[i] = mean((Boston$crim[test]-pred)^2)
+}
+```
+
+```{r}
+which.min(val.errors_bwd)
+```
+
+```{r}
+coef(regfit.bwd,2)
+```
+
+```{r}
+print(val.errors_best)
+print(val.errors_fwd)
+print(val.errors_bwd)
+```
+
+## Lasso
+
+```{r}
+x = model.matrix(crim ~ .,Boston )[,-1]
+y = Boston$crim
+```
+```{r}
+set.seed(1)
+
+train_lasso=sample (1: nrow(x), nrow(x)/2)
+test_lasso=(-train_lasso) 
+y.test_lasso=y[test_lasso]
+```
+```{r}
+grid=10^seq(10,-2, length =100)
+
+lasso.mod=glmnet(x[train_lasso ,],y[ train_lasso],alpha=1, lambda =grid)
+plot(lasso.mod)
+```
+```{r}
+set.seed(1)
+
+cv.out=cv.glmnet(x[train_lasso ,],y[ train_lasso],alpha=1)
+plot(cv.out)
+```
+```{r}
+bestlam =cv.out$lambda.min
+lasso.pred=predict (lasso.mod ,s=bestlam ,newx=x[test_lasso ,])
+mean((lasso.pred -y.test_lasso)^2)
+```
+
+## Ridge
+
+```{r}
+x = model.matrix(crim ~ .,Boston )[,-1]
+y = Boston$crim
+```
+```{r}
+set.seed(1)
+
+train_ridge=sample (1: nrow(x), nrow(x)/2)
+test_ridge=(-train_ridge) 
+y.test_ridge=y[test_ridge]
+```
+```{r}
+grid=10^seq(10,-2, length =100)
+
+ridge.mod=glmnet(x[train_ridge ,],y[ train_ridge],alpha=0, lambda =grid)
+plot(ridge.mod)
+```
+```{r}
+set.seed(1)
+
+cv.out=cv.glmnet(x[train_ridge ,],y[ train_ridge],alpha=0)
+plot(cv.out)
+```
+```{r}
+bestlam =cv.out$lambda.min
+ridge.pred=predict (ridge.mod ,s=bestlam ,newx=x[test_ridge ,])
+mean((ridge.pred -y.test_ridge)^2)
+```
+
+
